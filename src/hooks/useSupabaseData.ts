@@ -315,6 +315,229 @@ export const useReviews = () => {
   return { reviews, loading, error }
 }
 
+// export const useDashboardStats = () => {
+//   const [stats, setStats] = useState({
+//     totalUsers: 0,
+//     totalMerchants: 0,
+//     totalRevenue: 0,
+//     pendingVerifications: 0,
+//     userGrowthData: [] as { month: string; users: number; merchants: number }[],
+//     revenueData: [] as { month: string; revenue: number }[]
+//   })
+//   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
+//   const [loading, setLoading] = useState(true)
+
+//   useEffect(() => {
+//     const fetchStats = async () => {
+//       try {
+//         // Get user count
+//         const { count: userCount } = await supabase
+//           .from('unique_visitors')
+//           .select('*', { count: 'exact', head: true })
+//           .eq('user_type', 'user')
+
+//         // Get merchant count
+//         const { count: merchantCount } = await supabase
+//           .from('unique_visitors')
+//           .select('*', { count: 'exact', head: true })
+//           .eq('user_type', 'merchant')
+
+//         // Get pending verifications
+//         const { count: pendingCount } = await supabase
+//           .from('unique_visitors')
+//           .select('*', { count: 'exact', head: true })
+//           .eq('verification_status', 'pending')
+
+//         // Get total revenue from invoices
+//         const { data: invoices } = await supabase
+//           .from('invoices')
+//           .select('invoice_amount, created_at')
+
+//         const totalRevenue = invoices?.reduce((sum, invoice) => {
+//           const amount = parseFloat(invoice.invoice_amount?.replace(/[^\d.-]/g, '') || '0')
+//           return sum + amount
+//         }, 0) || 0
+
+//         // Get user growth data (last 7 months)
+//         const userGrowthData = []
+//         const revenueData = []
+//         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul']
+
+//         for (let i = 6; i >= 0; i--) {
+//           const date = new Date()
+//           date.setMonth(date.getMonth() - i)
+//           const monthStart = new Date(date.getFullYear(), date.getMonth(), 1)
+//           const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+
+//           // Users for this month
+//           const { count: monthlyUsers } = await supabase
+//             .from('unique_visitors')
+//             .select('*', { count: 'exact', head: true })
+//             .eq('user_type', 'user')
+//             .gte('created_at', monthStart.toISOString())
+//             .lte('created_at', monthEnd.toISOString())
+
+//           // Merchants for this month
+//           const { count: monthlyMerchants } = await supabase
+//             .from('unique_visitors')
+//             .select('*', { count: 'exact', head: true })
+//             .eq('user_type', 'merchant')
+//             .gte('created_at', monthStart.toISOString())
+//             .lte('created_at', monthEnd.toISOString())
+
+//           // Revenue for this month
+//           const { data: monthlyInvoices } = await supabase
+//             .from('invoices')
+//             .select('invoice_amount')
+
+//             .gte('created_at', monthStart.toISOString())
+//             .lte('created_at', monthEnd.toISOString())
+
+//           const monthlyRevenue = monthlyInvoices?.reduce((sum, invoice) => {
+//             const amount = parseFloat(invoice.invoice_amount?.replace(/[^\d.-]/g, '') || '0')
+//             return sum + amount
+//           }, 0) || 0
+
+//           userGrowthData.push({
+//             month: months[6 - i],
+//             users: monthlyUsers || 0,
+//             merchants: monthlyMerchants || 0
+//           })
+
+//           revenueData.push({
+//             month: months[6 - i],
+//             revenue: monthlyRevenue
+//           })
+//         }
+
+//         // Get recent activity
+//         const activity: RecentActivity[] = []
+
+//         // Recent users
+//         const { data: recentUsers } = await supabase
+//           .from('unique_visitors')
+//           .select('*')
+//           .eq('user_type', 'user')
+//           .order('created_at', { ascending: false })
+//           .limit(3)
+
+//         recentUsers?.forEach(user => {
+//           activity.push({
+//             id: user.id,
+//             type: 'user_registered',
+//             title: 'New user registered',
+//             description: `${user.full_name || 'Unknown User'} just created an account`,
+//             created_at: user.created_at,
+//             user_name: user.full_name
+//           })
+//         })
+
+//         // Recent merchants
+//         const { data: recentMerchants } = await supabase
+//           .from('unique_visitors')
+//           .select('*')
+//           .eq('user_type', 'merchant')
+//           .order('created_at', { ascending: false })
+//           .limit(2)
+
+//         recentMerchants?.forEach(merchant => {
+//           activity.push({
+//             id: merchant.id,
+//             type: 'merchant_registered',
+//             title: 'New merchant added',
+//             description: `${merchant.brand_name || merchant.full_name || 'Unknown Merchant'} joined as a merchant`,
+//             created_at: merchant.created_at,
+//             user_name: merchant.brand_name || merchant.full_name
+//           })
+//         })
+
+//         // Recent invoices
+//         const { data: recentInvoices } = await supabase
+//           .from('invoices')
+//           .select('*')
+//           .order('created_at', { ascending: false })
+//           .limit(2)
+
+//         recentInvoices?.forEach(invoice => {
+//           activity.push({
+//             id: invoice.id,
+//             type: 'invoice_created',
+//             title: 'New transaction',
+//             description: `₦${parseFloat(invoice.invoice_amount?.replace(/[^\d.-]/g, '') || '0').toLocaleString()} payment from ${invoice.customer_name || 'Unknown Customer'}`,
+//             created_at: invoice.created_at,
+//             amount: invoice.invoice_amount
+//           })
+//         })
+
+//         // Recent verification requests
+//         const { data: pendingVerifications } = await supabase
+//           .from('unique_visitors')
+//           .select('*')
+//           .eq('verification_status', 'pending')
+//           .order('created_at', { ascending: false })
+//           .limit(2)
+
+//         pendingVerifications?.forEach(user => {
+//           activity.push({
+//             id: user.id,
+//             type: 'verification_request',
+//             title: 'Verification request',
+//             description: `${user.brand_name || user.full_name || 'Unknown User'} submitted verification documents`,
+//             created_at: user.created_at,
+//             user_name: user.brand_name || user.full_name
+//           })
+//         })
+
+//         // Sort activity by date
+//         activity.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+//         setStats({
+//           totalUsers: userCount || 0,
+//           totalMerchants: merchantCount || 0,
+//           totalRevenue,
+//           pendingVerifications: pendingCount || 0,
+//           userGrowthData,
+//           revenueData
+//         })
+
+//         setRecentActivity(activity.slice(0, 6))
+//       } catch (error) {
+//         console.error('Error fetching dashboard stats:', error)
+//       } finally {
+//         setLoading(false)
+//       }
+//     }
+
+//     fetchStats()
+//   }, [])
+
+//   return { stats, recentActivity, loading }
+// }
+
+
+// Helper to get the last N month labels and their date ranges
+const getLastNMonths = (n: number) => {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const monthData = []
+  const today = new Date()
+
+  for (let i = n - 1; i >= 0; i--) {
+    const date = new Date()
+    date.setMonth(today.getMonth() - i)
+    
+    const monthStart = new Date(date.getFullYear(), date.getMonth(), 1)
+    const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+
+    monthData.push({
+      label: months[date.getMonth()],
+      start: monthStart.toISOString(),
+      end: monthEnd.toISOString(),
+      index: date.getMonth(), // Use index for sorting if needed, or to align month data
+    })
+  }
+  return monthData
+}
+
 export const useDashboardStats = () => {
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -330,164 +553,131 @@ export const useDashboardStats = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Get user count
-        const { count: userCount } = await supabase
-          .from('unique_visitors')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_type', 'user')
+        const fetchInitialCounts = [
+          supabase.from('unique_visitors').select('*', { count: 'exact', head: true }).eq('user_type', 'user'),
+          supabase.from('unique_visitors').select('*', { count: 'exact', head: true }).eq('user_type', 'merchant'),
+          supabase.from('unique_visitors').select('*', { count: 'exact', head: true }).eq('verification_status', 'pending'),
+          // Fetch ALL invoices to calculate total revenue AND monthly revenue in one go
+          supabase.from('invoices').select('invoice_amount, created_at').order('created_at', { ascending: false }),
+        ]
 
-        // Get merchant count
-        const { count: merchantCount } = await supabase
-          .from('unique_visitors')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_type', 'merchant')
+        const [
+          { count: userCount },
+          { count: merchantCount },
+          { count: pendingCount },
+          { data: invoices },
+        ] = await Promise.all(fetchInitialCounts)
 
-        // Get pending verifications
-        const { count: pendingCount } = await supabase
-          .from('unique_visitors')
-          .select('*', { count: 'exact', head: true })
-          .eq('verification_status', 'pending')
-
-        // Get total revenue from invoices
-        const { data: invoices } = await supabase
-          .from('invoices')
-          .select('invoice_amount, created_at')
-          .eq('invoice_status', 'paid')
-
+        // --- Total Revenue Calculation ---
         const totalRevenue = invoices?.reduce((sum, invoice) => {
           const amount = parseFloat(invoice.invoice_amount?.replace(/[^\d.-]/g, '') || '0')
           return sum + amount
         }, 0) || 0
 
-        // Get user growth data (last 7 months)
-        const userGrowthData = []
-        const revenueData = []
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul']
+        // --- Monthly Data Aggregation (Optimized Revenue) ---
+        const last7Months = getLastNMonths(7)
+        const revenueMap: Record<string, number> = {}
 
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date()
-          date.setMonth(date.getMonth() - i)
-          const monthStart = new Date(date.getFullYear(), date.getMonth(), 1)
-          const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+        // Initialize revenue map and user/merchant growth arrays with month labels
+        const initialRevenueData = last7Months.map(({ label }) => {
+          revenueMap[label] = 0
+          return { month: label, revenue: 0 }
+        })
+        const initialUserGrowthData = last7Months.map(({ label }) => ({
+          month: label,
+          users: 0,
+          merchants: 0,
+        }))
 
-          // Users for this month
-          const { count: monthlyUsers } = await supabase
-            .from('unique_visitors')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_type', 'user')
-            .gte('created_at', monthStart.toISOString())
-            .lte('created_at', monthEnd.toISOString())
-
-          // Merchants for this month
-          const { count: monthlyMerchants } = await supabase
-            .from('unique_visitors')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_type', 'merchant')
-            .gte('created_at', monthStart.toISOString())
-            .lte('created_at', monthEnd.toISOString())
-
-          // Revenue for this month
-          const { data: monthlyInvoices } = await supabase
-            .from('invoices')
-            .select('invoice_amount')
-            .eq('invoice_status', 'paid')
-            .gte('created_at', monthStart.toISOString())
-            .lte('created_at', monthEnd.toISOString())
-
-          const monthlyRevenue = monthlyInvoices?.reduce((sum, invoice) => {
+        // Aggregate revenue data from the single 'invoices' query
+        invoices?.forEach(invoice => {
+          const createdAt = new Date(invoice.created_at)
+          const monthLabel = createdAt.toLocaleDateString('en-US', { month: 'short' })
+          
+          // Check if the invoice is within the last 7 months we are tracking
+          if (revenueMap.hasOwnProperty(monthLabel)) {
             const amount = parseFloat(invoice.invoice_amount?.replace(/[^\d.-]/g, '') || '0')
-            return sum + amount
-          }, 0) || 0
+            revenueMap[monthLabel] += amount
+          }
+        })
+        
+        // Finalize revenue data
+        const revenueData = initialRevenueData.map(data => ({
+          ...data,
+          revenue: revenueMap[data.month] || 0
+        }))
 
-          userGrowthData.push({
-            month: months[6 - i],
+        // --- Monthly User/Merchant Growth (Still N queries, but cleaner) ---
+        // This still requires a query per month per user_type due to Supabase client limitations
+        const monthlyGrowthPromises = last7Months.map(async ({ start, end, label }) => {
+          const [
+            { count: monthlyUsers },
+            { count: monthlyMerchants }
+          ] = await Promise.all([
+            supabase.from('unique_visitors')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_type', 'user')
+              .gte('created_at', start)
+              .lte('created_at', end),
+            supabase.from('unique_visitors')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_type', 'merchant')
+              .gte('created_at', start)
+              .lte('created_at', end),
+          ])
+
+          return {
+            month: label,
             users: monthlyUsers || 0,
             merchants: monthlyMerchants || 0
-          })
+          }
+        })
 
-          revenueData.push({
-            month: months[6 - i],
-            revenue: monthlyRevenue
-          })
-        }
+        const userGrowthData = await Promise.all(monthlyGrowthPromises)
+        // Note: The previous code was using fixed month names ('Jan', 'Feb', etc.), 
+        // this version dynamically calculates the last 7 months based on the current date.
 
-        // Get recent activity
+
+        // --- Recent Activity (Remains mostly the same, now in a single Promise.all block) ---
+        const fetchRecentActivityPromises = [
+          supabase.from('unique_visitors').select('*').eq('user_type', 'user').order('created_at', { ascending: false }).limit(3),
+          supabase.from('unique_visitors').select('*').eq('user_type', 'merchant').order('created_at', { ascending: false }).limit(2),
+          supabase.from('invoices').select('*').order('created_at', { ascending: false }).limit(2),
+          supabase.from('unique_visitors').select('*').eq('verification_status', 'pending').order('created_at', { ascending: false }).limit(2),
+        ]
+        
+        const [
+          { data: recentUsers }, 
+          { data: recentMerchants }, 
+          { data: recentInvoices }, 
+          { data: pendingVerifications }
+        ] = await Promise.all(fetchRecentActivityPromises)
+        
         const activity: RecentActivity[] = []
-
-        // Recent users
-        const { data: recentUsers } = await supabase
-          .from('unique_visitors')
-          .select('*')
-          .eq('user_type', 'user')
-          .order('created_at', { ascending: false })
-          .limit(3)
-
-        recentUsers?.forEach(user => {
-          activity.push({
-            id: user.id,
-            type: 'user_registered',
-            title: 'New user registered',
-            description: `${user.full_name || 'Unknown User'} just created an account`,
-            created_at: user.created_at,
-            user_name: user.full_name
-          })
-        })
-
-        // Recent merchants
-        const { data: recentMerchants } = await supabase
-          .from('unique_visitors')
-          .select('*')
-          .eq('user_type', 'merchant')
-          .order('created_at', { ascending: false })
-          .limit(2)
-
-        recentMerchants?.forEach(merchant => {
-          activity.push({
-            id: merchant.id,
-            type: 'merchant_registered',
-            title: 'New merchant added',
-            description: `${merchant.brand_name || merchant.full_name || 'Unknown Merchant'} joined as a merchant`,
-            created_at: merchant.created_at,
-            user_name: merchant.brand_name || merchant.full_name
-          })
-        })
-
-        // Recent invoices
-        const { data: recentInvoices } = await supabase
-          .from('invoices')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(2)
-
-        recentInvoices?.forEach(invoice => {
-          activity.push({
-            id: invoice.id,
-            type: 'invoice_created',
-            title: 'New transaction',
-            description: `₦${parseFloat(invoice.invoice_amount?.replace(/[^\d.-]/g, '') || '0').toLocaleString()} payment from ${invoice.customer_name || 'Unknown Customer'}`,
-            created_at: invoice.created_at,
-            amount: invoice.invoice_amount
-          })
-        })
-
-        // Recent verification requests
-        const { data: pendingVerifications } = await supabase
-          .from('unique_visitors')
-          .select('*')
-          .eq('verification_status', 'pending')
-          .order('created_at', { ascending: false })
-          .limit(2)
-
-        pendingVerifications?.forEach(user => {
-          activity.push({
-            id: user.id,
-            type: 'verification_request',
-            title: 'Verification request',
-            description: `${user.brand_name || user.full_name || 'Unknown User'} submitted verification documents`,
-            created_at: user.created_at,
-            user_name: user.brand_name || user.full_name
-          })
-        })
+        
+        recentUsers?.forEach(user => activity.push({
+          id: user.id, type: 'user_registered', title: 'New user registered',
+          description: `${user.full_name || 'Unknown User'} just created an account`,
+          created_at: user.created_at, user_name: user.full_name
+        }))
+        
+        recentMerchants?.forEach(merchant => activity.push({
+          id: merchant.id, type: 'merchant_registered', title: 'New merchant added',
+          description: `${merchant.brand_name || merchant.full_name || 'Unknown Merchant'} joined as a merchant`,
+          created_at: merchant.created_at, user_name: merchant.brand_name || merchant.full_name
+        }))
+        
+        recentInvoices?.forEach(invoice => activity.push({
+          id: invoice.id, type: 'invoice_created', title: 'New transaction',
+          description: `₦${parseFloat(invoice.invoice_amount?.replace(/[^\d.-]/g, '') || '0').toLocaleString()} payment from ${invoice.customer_name || 'Unknown Customer'}`,
+          created_at: invoice.created_at, amount: invoice.invoice_amount
+        }))
+        
+        pendingVerifications?.forEach(user => activity.push({
+          id: user.id, type: 'verification_request', title: 'Verification request',
+          description: `${user.brand_name || user.full_name || 'Unknown User'} submitted verification documents`,
+          created_at: user.created_at, user_name: user.brand_name || user.full_name
+        }))
 
         // Sort activity by date
         activity.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -581,7 +771,6 @@ export const useAnalytics = () => {
           const { data: monthlyInvoices } = await supabase
             .from('invoices')
             .select('invoice_amount')
-            .eq('invoice_status', 'paid')
             .gte('created_at', monthStart.toISOString())
             .lte('created_at', monthEnd.toISOString())
 
