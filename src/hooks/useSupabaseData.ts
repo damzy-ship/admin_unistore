@@ -201,10 +201,6 @@ export const useProducts = (filters?: {
           query = query.eq('is_featured', filters.is_featured)
         }
 
-        const from = (options.page - 1) * options.limit
-        const to = from + options.limit - 1
-        query = query.range(from, to).order('created_at', { ascending: false })
-
         const { data, error } = await query;
 
         console.log(data)
