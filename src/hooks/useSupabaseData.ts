@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { supabase, UniqueVisitor, Invoice, MerchantProduct } from '../lib/supabase'
+import { supabase, UniqueVisitor, Invoice, MerchantProduct, Hostel } from '../lib/supabase'
 
 export interface RecentActivity {
   id: string
-  type: 'user_registered' | 'merchant_registered' | 'invoice_created' | 'verification_request'
+  type: 'user_registered' | 'visit' | 'merchant_registered' | 'invoice_created' | 'verification_request'
   title: string
   description: string
   created_at: string
@@ -92,6 +92,7 @@ export const useUsers = (
 
   useEffect(() => {
     fetchUsers(page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, page, limit])
 
   return { users, loading, error, total, page, limit, refetch: fetchUsers }
@@ -149,12 +150,15 @@ export const useMerchants = (
       if (error) throw error
 
       // Fetch products for each merchant
-      const merchantIds = merchantsData?.map(m => m.id) || []
+      const merchantIds = merchantsData?.map(m => m.auth_user_id) || []
+      // console.log('Merchant IDs:', merchantIds)
       if (merchantIds.length > 0) {
         const { data: productsData } = await supabase
           .from('merchant_products')
           .select('*')
           .in('merchant_id', merchantIds)
+
+        // console.log('Fetched products:', productsData)
 
         const productsByMerchant = productsData?.reduce((acc, product) => {
           if (!acc[product.merchant_id]) {
@@ -163,7 +167,7 @@ export const useMerchants = (
           acc[product.merchant_id].push(product)
           return acc
         }, {} as Record<string, MerchantProduct[]>) || {}
-
+        // console.log('Products by Merchant:', productsByMerchant)
         setMerchantProducts(productsByMerchant)
       }
 
@@ -178,6 +182,7 @@ export const useMerchants = (
 
   useEffect(() => {
     fetchMerchants(page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, page, limit])
 
   return { merchants, merchantProducts, loading, error, total, page, limit, refetch: fetchMerchants }
@@ -244,7 +249,7 @@ export const useProducts = (
     fetchProducts(page)
   }, [filters, page, limit])
 
-  return { products, loading, error, total, page, limit, refetch: () => {} }
+  return { products, loading, error, total, page, limit, refetch: () => { } }
 }
 
 export const useInvoices = (
@@ -312,10 +317,9 @@ export const useInvoices = (
     }
 
     fetchInvoices(page)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, page, limit])
 
-  return { invoices, loading, error, total, page, limit, refetch: () => {} }
+  return { invoices, loading, error, total, page, limit, refetch: () => { } }
 }
 
 export const useReviews = () => {
@@ -561,7 +565,7 @@ const getLastNMonths = (n: number) => {
   for (let i = n - 1; i >= 0; i--) {
     const date = new Date()
     date.setMonth(today.getMonth() - i)
-    
+
     const monthStart = new Date(date.getFullYear(), date.getMonth(), 1)
     const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0)
 
@@ -579,6 +583,7 @@ export const useDashboardStats = () => {
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalMerchants: 0,
+    totalVisitors: 0,
     totalRevenue: 0,
     pendingVerifications: 0,
     userGrowthData: [] as { month: string; users: number; merchants: number }[],
@@ -593,6 +598,7 @@ export const useDashboardStats = () => {
         const fetchInitialCounts = [
           supabase.from('unique_visitors').select('*', { count: 'exact', head: true }).eq('user_type', 'user'),
           supabase.from('unique_visitors').select('*', { count: 'exact', head: true }).eq('user_type', 'merchant'),
+          supabase.from('unique_visitors').select('*', { count: 'exact', head: true }).eq('user_type', 'visitor'),
           supabase.from('unique_visitors').select('*', { count: 'exact', head: true }).eq('verification_status', 'pending'),
           // Fetch ALL invoices to calculate total revenue AND monthly revenue in one go
           supabase.from('invoices').select('invoice_amount, created_at').order('created_at', { ascending: false }),
@@ -601,6 +607,7 @@ export const useDashboardStats = () => {
         const [
           { count: userCount },
           { count: merchantCount },
+          { count: visitorCount },
           { count: pendingCount },
           { data: invoices },
         ] = await Promise.all(fetchInitialCounts)
@@ -620,20 +627,20 @@ export const useDashboardStats = () => {
           revenueMap[label] = 0
           return { month: label, revenue: 0 }
         })
-          // Removed unused initialUserGrowthData
+        // Removed unused initialUserGrowthData
 
         // Aggregate revenue data from the single 'invoices' query
         invoices?.forEach(invoice => {
           const createdAt = new Date(invoice.created_at)
           const monthLabel = createdAt.toLocaleDateString('en-US', { month: 'short' })
-          
+
           // Check if the invoice is within the last 7 months we are tracking
-            if (Object.prototype.hasOwnProperty.call(revenueMap, monthLabel)) {
+          if (Object.prototype.hasOwnProperty.call(revenueMap, monthLabel)) {
             const amount = parseFloat(invoice.invoice_amount?.replace(/[^\d.-]/g, '') || '0')
             revenueMap[monthLabel] += amount
           }
         })
-        
+
         // Finalize revenue data
         const revenueData = initialRevenueData.map(data => ({
           ...data,
@@ -677,39 +684,44 @@ export const useDashboardStats = () => {
           supabase.from('unique_visitors').select('*').eq('user_type', 'merchant').order('created_at', { ascending: false }).limit(2),
           supabase.from('invoices').select('*').order('created_at', { ascending: false }).limit(2),
           supabase.from('unique_visitors').select('*').eq('verification_status', 'pending').order('created_at', { ascending: false }).limit(2),
+          supabase.from('unique_visitors').select('*').eq('user_type', 'visitor').order('created_at', { ascending: false }).limit(2),
         ]
-        
+
         const [
-          { data: recentUsers }, 
-          { data: recentMerchants }, 
-          { data: recentInvoices }, 
-          { data: pendingVerifications }
+          { data: recentUsers },
+          { data: recentMerchants },
+          { data: recentInvoices },
+          { data: pendingVerifications },
+          { data: recentVisitors },
         ] = await Promise.all(fetchRecentActivityPromises)
-        
+
         const activity: RecentActivity[] = []
-        
+
         recentUsers?.forEach(user => activity.push({
           id: user.id, type: 'user_registered', title: 'New user registered',
           description: `${user.full_name || 'Unknown User'} just created an account`,
           created_at: user.created_at, user_name: user.full_name
         }))
-        
+
         recentMerchants?.forEach(merchant => activity.push({
           id: merchant.id, type: 'merchant_registered', title: 'New merchant added',
           description: `${merchant.brand_name || merchant.full_name || 'Unknown Merchant'} joined as a merchant`,
           created_at: merchant.created_at, user_name: merchant.brand_name || merchant.full_name
         }))
-        
         recentInvoices?.forEach(invoice => activity.push({
           id: invoice.id, type: 'invoice_created', title: 'New transaction',
           description: `₦${parseFloat(invoice.invoice_amount?.replace(/[^\d.-]/g, '') || '0').toLocaleString()} payment from ${invoice.customer_name || 'Unknown Customer'}`,
           created_at: invoice.created_at, amount: invoice.invoice_amount
         }))
-        
         pendingVerifications?.forEach(user => activity.push({
           id: user.id, type: 'verification_request', title: 'Verification request',
           description: `${user.brand_name || user.full_name || 'Unknown User'} submitted verification documents`,
           created_at: user.created_at, user_name: user.brand_name || user.full_name
+        }))
+        recentVisitors?.forEach(visitor => activity.push({
+          id: visitor.id, type: 'visit', title: 'New visitor visited site',
+          description: `A new Visitor with id ${visitor.id} just came into the site`,
+          created_at: visitor.created_at, user_name: visitor.id
         }))
 
         // Sort activity by date
@@ -718,11 +730,14 @@ export const useDashboardStats = () => {
         setStats({
           totalUsers: userCount || 0,
           totalMerchants: merchantCount || 0,
+          totalVisitors: visitorCount || 0,
           totalRevenue,
           pendingVerifications: pendingCount || 0,
           userGrowthData,
           revenueData
         })
+
+        // attach visitorCount to recentActivity via a side effect or state if needed
 
         setRecentActivity(activity.slice(0, 6))
       } catch (error) {
@@ -894,8 +909,42 @@ export const updateVerificationStatus = async (userId: string, status: 'verified
   const updateData: Partial<UniqueVisitor> = { verification_status: status }
   if (status === 'unverified') {
     // explicitly clear verification id
-  // @ts-expect-error allow null assignment for verification_id
-  updateData.verification_id = null
+    // @ts-expect-error allow null assignment for verification_id
+    updateData.verification_id = null
+  }
+
+  const { error } = await supabase
+    .from('unique_visitors')
+    .update(updateData)
+    .eq('id', userId)
+
+  if (error) throw error
+}
+
+// **NEW:** Function to fetch hostels for a specific school
+export const fetchHostelsBySchoolId = async (schoolId: string): Promise<Hostel[]> => {
+  const { data, error } = await supabase
+    .from('hostels')
+    .select('*') // Select all fields from hostels
+    .eq('school_id', schoolId)
+
+  if (error) throw error
+  return data || []
+}
+
+// **NEW:** Function to update hostel-related properties
+// Assuming UniqueVisitor now includes 'is_hostel_merchant: boolean'
+export const updateHostelMerchantStatus = async (
+  userId: string,
+  isHostelMerchant: boolean,
+  hostelId?: string | null,
+  room?: string | null,
+): Promise<void> => {
+  const updateData: Partial<UniqueVisitor> = {
+    // Assuming you have added 'is_hostel_merchant' to UniqueVisitor
+    is_hostel_merchant: isHostelMerchant,
+    hostel_id: hostelId ?? undefined,
+    room: room ?? undefined,
   }
 
   const { error } = await supabase

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Search, Plus, RefreshCw, Download, Filter, Eye } from 'lucide-react'
 import { useUsers } from '../hooks/useSupabaseData'
+import { UniqueVisitor } from '../lib/supabase'
 import LoadingSpinner from '../components/LoadingSpinner'
 import StatusBadge from '../components/StatusBadge'
 import VerificationModal from '../components/VerificationModal'
@@ -15,7 +16,7 @@ const Users: React.FC = () => {
   })
   
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedUser, setSelectedUser] = useState(null)
+  const [selectedUser, setSelectedUser] = useState<UniqueVisitor | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [page, setPage] = useState(1)
   const limit = 10
@@ -31,7 +32,7 @@ const Users: React.FC = () => {
     setFilters(prev => ({ ...prev, [key]: value }))
   }
 
-  const handleViewUser = (user: any) => {
+  const handleViewUser = (user: UniqueVisitor) => {
     setSelectedUser(user)
     setIsModalOpen(true)
   }
@@ -41,7 +42,10 @@ const Users: React.FC = () => {
     setSelectedUser(null)
   }
 
-  const handleVerificationUpdate = () => {
+  const handleVerificationUpdate = (updated?: Partial<UniqueVisitor> | null) => {
+    if (updated && selectedUser && selectedUser.id === updated.id) {
+      setSelectedUser(Object.assign({}, selectedUser, updated as UniqueVisitor))
+    }
     refetch()
   }
 
@@ -148,11 +152,7 @@ const Users: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
-                        <img
-                          className="h-10 w-10 rounded-full object-cover"
-                          src={`https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200`}
-                          alt="User"
-                        />
+                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-700">{(user.full_name || 'U').split(' ').map(s => s[0]).slice(0,2).join('')}</div>
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
@@ -192,20 +192,29 @@ const Users: React.FC = () => {
             </tbody>
           </table>
         </div>
-        <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-between">
+        <div className="px-6 py-4 bg-gray-50 border-t flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-sm text-gray-500">
             Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, total || 0)}</span> of{' '}
             <span className="font-medium">{total || 0}</span> users
           </div>
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
             <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="px-3 py-1 border rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50">
               Previous
             </button>
-            {Array.from({ length: Math.max(1, Math.ceil((total || 0) / limit)) }).map((_, i) => (
-              <button key={i} onClick={() => setPage(i + 1)} className={`px-3 py-1 border rounded-md text-sm font-medium ${page === i + 1 ? 'text-white bg-blue-600' : 'text-gray-700 bg-white hover:bg-gray-50'}`}>
-                {i + 1}
-              </button>
-            ))}
+            <div className="hidden sm:flex items-center space-x-2">
+              {Array.from({ length: Math.max(1, Math.ceil((total || 0) / limit)) }).map((_, i) => (
+                <button key={i} onClick={() => setPage(i + 1)} className={`px-3 py-1 border rounded-md text-sm font-medium ${page === i + 1 ? 'text-white bg-blue-600' : 'text-gray-700 bg-white hover:bg-gray-50'}`}>
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+            <div className="sm:hidden">
+              <select value={page} onChange={(e) => setPage(Number(e.target.value))} className="border rounded-md px-3 py-1 text-sm">
+                {Array.from({ length: Math.max(1, Math.ceil((total || 0) / limit)) }).map((_, i) => (
+                  <option key={i} value={i + 1}>{i + 1}</option>
+                ))}
+              </select>
+            </div>
             <button disabled={page >= Math.ceil((total || 0) / limit)} onClick={() => setPage(p => Math.min(Math.ceil((total || 0) / limit), p + 1))} className="px-3 py-1 border rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50">
               Next
             </button>

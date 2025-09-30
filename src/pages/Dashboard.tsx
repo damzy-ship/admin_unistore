@@ -32,12 +32,14 @@ ChartJS.register(
 const Dashboard: React.FC = () => {
   const { stats, recentActivity, loading } = useDashboardStats()
 
+  type GrowthEntry = { month: string; users: number; merchants: number; visitors?: number }
+  const growth = stats.userGrowthData as GrowthEntry[]
   const userGrowthData = {
-    labels: stats.userGrowthData.map(d => d.month),
+    labels: growth.map(d => d.month),
     datasets: [
       {
         label: 'Users',
-        data: stats.userGrowthData.map(d => d.users),
+        data: growth.map(d => d.users),
         borderColor: 'rgb(59, 130, 246)',
         backgroundColor: 'rgba(59, 130, 246, 0.05)',
         tension: 0.4,
@@ -45,9 +47,17 @@ const Dashboard: React.FC = () => {
       },
       {
         label: 'Merchants',
-        data: stats.userGrowthData.map(d => d.merchants),
+        data: growth.map(d => d.merchants),
         borderColor: 'rgb(124, 58, 237)',
         backgroundColor: 'rgba(124, 58, 237, 0.05)',
+        tension: 0.4,
+        fill: true
+      }
+      ,{
+        label: 'Visitors',
+        data: growth.map(d => d.visitors || 0),
+        borderColor: 'rgb(16, 185, 129)',
+        backgroundColor: 'rgba(16, 185, 129, 0.05)',
         tension: 0.4,
         fill: true
       }
@@ -87,8 +97,10 @@ const Dashboard: React.FC = () => {
       y: {
         beginAtZero: true,
         ticks: {
-          callback: function (value: any) {
-            return '₦' + value.toLocaleString()
+          // Chart.js expects (this, tickValue, index, ticks)
+          callback: function (this: any, tickValue: string | number) {
+            const v = typeof tickValue === 'string' ? Number(tickValue) : tickValue
+            return '\u20a6' + (isNaN(Number(v)) ? String(v) : (v as number).toLocaleString())
           }
         }
       }
@@ -167,6 +179,22 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="p-3 rounded-full bg-purple-100 text-purple-500">
               <ShoppingCart size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Total Visitors</p>
+                <h3 className="text-2xl font-bold text-gray-800 mt-1">{(stats as unknown as any).totalVisitors ? Number((stats as unknown as any).totalVisitors).toLocaleString() : 0}</h3>
+              <p className="text-sm text-green-500 mt-1 flex items-center">
+                <TrendingUp size={16} className="mr-1" />
+                <span>Guest visitors</span>
+              </p>
+            </div>
+            <div className="p-3 rounded-full bg-green-100 text-green-500">
+              <UserPlus size={24} />
             </div>
           </div>
         </div>

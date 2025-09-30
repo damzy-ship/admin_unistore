@@ -13,19 +13,20 @@ export interface UniqueVisitor {
   last_visit: string
   visit_count: number
   created_at: string
-  phone_number?: string
-  auth_user_id?: string
+  phone_number: string
+  auth_user_id: string
   full_name?: string
   email?: string
-  user_type: 'user' | 'merchant'
+  user_type: 'user' | 'merchant' | 'visitor'
   school_id?: string
   brand_name?: string
   verification_id?: string
   verification_status: 'verified' | 'unverified' | 'pending'
-  schools?: {
-    name: string
-    short_name: string
-  }
+  hostel_id?: string
+  schools?: School
+  hostels?: Hostel
+  room?: string
+  is_hostel_merchant?: boolean
 }
 
 export interface Invoice {
@@ -57,7 +58,8 @@ export interface MerchantProduct {
   product_features: string[]
   is_featured: boolean
   discount_price?: string;
-  unique_visitor?: UniqueVisitor;
+  unique_visitors?: UniqueVisitor;
+
 }
 
 export interface School {
@@ -72,4 +74,5 @@ export interface Hostel {
   id: string
   name: string
   school_id: string
+  school?: School
 }
