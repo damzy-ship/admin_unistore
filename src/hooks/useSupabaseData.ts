@@ -31,28 +31,36 @@ export interface RequestLog {
   generated_categories?: string[]
 }
 
-export const useUsers = (filters?: {
-  verification_status?: string
-  school?: string
-  date_from?: string
-  date_to?: string
-}) => {
+export const useUsers = (
+  filters?: {
+    verification_status?: string
+    school?: string
+    date_from?: string
+    date_to?: string
+  },
+  page = 1,
+  limit = 10
+) => {
   const [users, setUsers] = useState<UniqueVisitor[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [total, setTotal] = useState(0)
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (p = page) => {
     setLoading(true)
     try {
       let query = supabase
         .from('unique_visitors')
-        .select(`
+        .select(
+          `
           *,
           schools (
             name,
             short_name
           )
-        `)
+        `,
+          { count: 'exact' }
+        )
         .eq('user_type', 'user')
         .order('created_at', { ascending: false })
 
@@ -68,10 +76,13 @@ export const useUsers = (filters?: {
         query = query.lte('created_at', filters.date_to)
       }
 
-      const { data, error } = await query
+      const from = (p - 1) * limit
+      const to = p * limit - 1
+      const { data, error, count } = await query.range(from, to)
 
       if (error) throw error
       setUsers(data || [])
+      setTotal(count || 0)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -80,34 +91,42 @@ export const useUsers = (filters?: {
   }
 
   useEffect(() => {
-    fetchUsers()
-  }, [filters])
+    fetchUsers(page)
+  }, [filters, page, limit])
 
-  return { users, loading, error, refetch: fetchUsers }
+  return { users, loading, error, total, page, limit, refetch: fetchUsers }
 }
 
-export const useMerchants = (filters?: {
-  verification_status?: string
-  date_from?: string
-  date_to?: string
-}) => {
+export const useMerchants = (
+  filters?: {
+    verification_status?: string
+    date_from?: string
+    date_to?: string
+  },
+  page = 1,
+  limit = 10
+) => {
   const [merchants, setMerchants] = useState<UniqueVisitor[]>([])
   const [merchantProducts, setMerchantProducts] = useState<Record<string, MerchantProduct[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [total, setTotal] = useState(0)
 
-  const fetchMerchants = async () => {
+  const fetchMerchants = async (p = page) => {
     setLoading(true)
     try {
       let query = supabase
         .from('unique_visitors')
-        .select(`
+        .select(
+          `
           *,
           schools (
             name,
             short_name
           )
-        `)
+        `,
+          { count: 'exact' }
+        )
         .eq('user_type', 'merchant')
         .order('created_at', { ascending: false })
 
@@ -123,7 +142,9 @@ export const useMerchants = (filters?: {
         query = query.lte('created_at', filters.date_to)
       }
 
-      const { data: merchantsData, error } = await query
+      const from = (p - 1) * limit
+      const to = p * limit - 1
+      const { data: merchantsData, error, count } = await query.range(from, to)
 
       if (error) throw error
 
@@ -147,6 +168,7 @@ export const useMerchants = (filters?: {
       }
 
       setMerchants(merchantsData || [])
+      setTotal(count || 0)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -155,39 +177,36 @@ export const useMerchants = (filters?: {
   }
 
   useEffect(() => {
-    fetchMerchants()
-  }, [filters])
+    fetchMerchants(page)
+  }, [filters, page, limit])
 
-  return { merchants, merchantProducts, loading, error, refetch: fetchMerchants }
+  return { merchants, merchantProducts, loading, error, total, page, limit, refetch: fetchMerchants }
 }
 
-export const useProducts = (filters?: {
-  merchant_id?: string
-  is_available?: boolean
-  is_featured?: boolean
-  page?: number
-  limit?: number
-  search?: string
-}) => {
+export const useProducts = (
+  filters?: {
+    merchant_id?: string
+    is_available?: boolean
+    is_featured?: boolean
+    search?: string
+  },
+  page = 1,
+  limit = 10
+) => {
   const [products, setProducts] = useState<MerchantProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
+  const [total, setTotal] = useState(0)
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchProducts = async (p = page) => {
       setLoading(true)
       try {
         let query = supabase
           .from('merchant_products')
           .select(`*,
-            unique_visitors (
-              *,
-              schools (name, short_name)
-            )`)
+            unique_visitors (*, schools (name, short_name))`, { count: 'exact' })
           .order('created_at', { ascending: false })
-
-
 
         if (filters?.merchant_id) {
           query = query.eq('merchant_id', filters.merchant_id)
@@ -201,12 +220,20 @@ export const useProducts = (filters?: {
           query = query.eq('is_featured', filters.is_featured)
         }
 
-        const { data, error } = await query;
+        if (filters?.search) {
+          // basic text search across product description and search_description
+          query = query.ilike('product_description', `%${filters.search}%`)
+        }
 
-        console.log(data)
+        const from = (p - 1) * limit
+        const to = p * limit - 1
+        const { data, error, count } = await query.range(from, to)
+
+        console.log('Fetched products:', data)
 
         if (error) throw error
         setProducts(data || [])
+        setTotal(count || 0)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred')
       } finally {
@@ -214,30 +241,35 @@ export const useProducts = (filters?: {
       }
     }
 
-    fetchProducts()
-  }, [filters])
+    fetchProducts(page)
+  }, [filters, page, limit])
 
-  return { products, loading, error }
+  return { products, loading, error, total, page, limit, refetch: () => {} }
 }
 
-export const useInvoices = (filters?: {
-  status?: string
-  date_from?: string
-  date_to?: string
-  min_amount?: number
-  max_amount?: number
-}) => {
+export const useInvoices = (
+  filters?: {
+    status?: string
+    date_from?: string
+    date_to?: string
+    min_amount?: number
+    max_amount?: number
+  },
+  page = 1,
+  limit = 10
+) => {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [total, setTotal] = useState(0)
 
   useEffect(() => {
-    const fetchInvoices = async () => {
+    const fetchInvoices = async (p = page) => {
       setLoading(true)
       try {
         let query = supabase
           .from('invoices')
-          .select('*')
+          .select('*', { count: 'exact' })
           .order('created_at', { ascending: false })
 
         if (filters?.status && filters.status !== 'All') {
@@ -252,7 +284,9 @@ export const useInvoices = (filters?: {
           query = query.lte('created_at', filters.date_to)
         }
 
-        const { data, error } = await query
+        const from = (p - 1) * limit
+        const to = p * limit - 1
+        const { data, error, count } = await query.range(from, to)
 
         if (error) throw error
 
@@ -269,6 +303,7 @@ export const useInvoices = (filters?: {
         }
 
         setInvoices(filteredData)
+        setTotal(count || 0)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred')
       } finally {
@@ -276,39 +311,45 @@ export const useInvoices = (filters?: {
       }
     }
 
-    fetchInvoices()
-  }, [filters])
+    fetchInvoices(page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, page, limit])
 
-  return { invoices, loading, error }
+  return { invoices, loading, error, total, page, limit, refetch: () => {} }
 }
 
 export const useReviews = () => {
   const [reviews, setReviews] = useState<SiteReview[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [total, setTotal] = useState(0)
+
+  const fetchReviews = async (page = 1, limit = 10) => {
+    setLoading(true)
+    try {
+      const from = (page - 1) * limit
+      const to = page * limit - 1
+      const { data, error, count } = await supabase
+        .from('site_reviews')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to)
+
+      if (error) throw error
+      setReviews(data || [])
+      setTotal(count || 0)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchReviews = async () => {
-      setLoading(true)
-      try {
-        const { data, error } = await supabase
-          .from('site_reviews')
-          .select('*')
-          .order('created_at', { ascending: false })
-
-        if (error) throw error
-        setReviews(data || [])
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred')
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchReviews()
   }, [])
 
-  return { reviews, loading, error }
+  return { reviews, loading, error, total, refetch: fetchReviews }
 }
 
 // export const useDashboardStats = () => {
@@ -579,11 +620,7 @@ export const useDashboardStats = () => {
           revenueMap[label] = 0
           return { month: label, revenue: 0 }
         })
-        const initialUserGrowthData = last7Months.map(({ label }) => ({
-          month: label,
-          users: 0,
-          merchants: 0,
-        }))
+          // Removed unused initialUserGrowthData
 
         // Aggregate revenue data from the single 'invoices' query
         invoices?.forEach(invoice => {
@@ -591,7 +628,7 @@ export const useDashboardStats = () => {
           const monthLabel = createdAt.toLocaleDateString('en-US', { month: 'short' })
           
           // Check if the invoice is within the last 7 months we are tracking
-          if (revenueMap.hasOwnProperty(monthLabel)) {
+            if (Object.prototype.hasOwnProperty.call(revenueMap, monthLabel)) {
             const amount = parseFloat(invoice.invoice_amount?.replace(/[^\d.-]/g, '') || '0')
             revenueMap[monthLabel] += amount
           }
@@ -854,9 +891,11 @@ export const useAnalytics = () => {
 }
 
 export const updateVerificationStatus = async (userId: string, status: 'verified' | 'unverified') => {
-  const updateData: any = { verification_status: status }
+  const updateData: Partial<UniqueVisitor> = { verification_status: status }
   if (status === 'unverified') {
-    updateData.verification_id = null
+    // explicitly clear verification id
+  // @ts-expect-error allow null assignment for verification_id
+  updateData.verification_id = null
   }
 
   const { error } = await supabase

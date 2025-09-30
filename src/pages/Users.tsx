@@ -17,7 +17,9 @@ const Users: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const { users, loading, error, refetch } = useUsers(filters)
+  const [page, setPage] = useState(1)
+  const limit = 10
+  const { users, loading, error, total, refetch } = useUsers(filters, page, limit)
 
   const filteredUsers = users.filter(user => 
     user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -192,23 +194,19 @@ const Users: React.FC = () => {
         </div>
         <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-between">
           <div className="text-sm text-gray-500">
-            Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredUsers.length}</span> of{' '}
-            <span className="font-medium">{users.length}</span> users
+            Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, total || 0)}</span> of{' '}
+            <span className="font-medium">{total || 0}</span> users
           </div>
           <div className="flex space-x-2">
-            <button className="px-3 py-1 border rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+            <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="px-3 py-1 border rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50">
               Previous
             </button>
-            <button className="px-3 py-1 border rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors">
-              1
-            </button>
-            <button className="px-3 py-1 border rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-              2
-            </button>
-            <button className="px-3 py-1 border rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-              3
-            </button>
-            <button className="px-3 py-1 border rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+            {Array.from({ length: Math.max(1, Math.ceil((total || 0) / limit)) }).map((_, i) => (
+              <button key={i} onClick={() => setPage(i + 1)} className={`px-3 py-1 border rounded-md text-sm font-medium ${page === i + 1 ? 'text-white bg-blue-600' : 'text-gray-700 bg-white hover:bg-gray-50'}`}>
+                {i + 1}
+              </button>
+            ))}
+            <button disabled={page >= Math.ceil((total || 0) / limit)} onClick={() => setPage(p => Math.min(Math.ceil((total || 0) / limit), p + 1))} className="px-3 py-1 border rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50">
               Next
             </button>
           </div>

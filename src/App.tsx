@@ -7,6 +7,8 @@ import Merchants from './pages/Merchants'
 import Products from './pages/Products'
 import Invoices from './pages/Invoices'
 import Reviews from './pages/Reviews'
+import Schools from './pages/Schools'
+import Hostels from './pages/Hostels'
 
 function App() {
   return (
@@ -18,6 +20,8 @@ function App() {
           <Route path="/users" element={<Users />} />
           <Route path="/merchants" element={<Merchants />} />
           <Route path="/products" element={<Products />} />
+          <Route path="/schools" element={<Schools />} />
+          <Route path="/hostels" element={<Hostels />} />
           <Route path="/invoices" element={<Invoices />} />
           <Route path="/reviews" element={<Reviews />} />
         </Routes>

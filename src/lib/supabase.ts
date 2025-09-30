@@ -56,7 +56,8 @@ export interface MerchantProduct {
   product_categories: string[]
   product_features: string[]
   is_featured: boolean
-  discount_price?: string
+  discount_price?: string;
+  unique_visitor?: UniqueVisitor;
 }
 
 export interface School {
@@ -65,4 +66,10 @@ export interface School {
   short_name: string
   is_active: boolean
   created_at: string
+}
+
+export interface Hostel {
+  id: string
+  name: string
+  school_id: string
 }

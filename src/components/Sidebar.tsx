@@ -33,7 +33,9 @@ const Sidebar: React.FC = () => {
       items: [
         { icon: Users, label: 'Users', path: '/users' },
         { icon: ShoppingCart, label: 'Merchants', path: '/merchants' },
-        { icon: Package, label: 'Products', path: '/products' }
+        { icon: Package, label: 'Products', path: '/products' },
+        { icon: Home, label: 'Schools', path: '/schools' },
+        { icon: Home, label: 'Hostels', path: '/hostels' }
       ]
     },
     {
