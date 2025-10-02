@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
-import { supabase } from '../lib/supabase'
+import { School, supabase } from '../lib/supabase'
 
 const Schools: React.FC = () => {
-  const [schools, setSchools] = useState<any[]>([])
+  const [schools, setSchools] = useState<School[]>([])
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
   const [shortName, setShortName] = useState('')
-  const [editing, setEditing] = useState<any | null>(null)
+  const [editing, setEditing] = useState<School | null>(null)
 
   const fetchSchools = async () => {
     setLoading(true)
@@ -39,7 +39,7 @@ const Schools: React.FC = () => {
     } finally { setLoading(false) }
   }
 
-  const handleEdit = (school: any) => {
+  const handleEdit = (school: School) => {
     setEditing(school)
     setName(school.name)
     setShortName(school.short_name)

@@ -48,18 +48,18 @@ export interface Invoice {
 export interface MerchantProduct {
   id: string
   created_at: string
-  merchant_id?: string
-  product_description?: string
-  product_price?: string
+  merchant_id: string
+  product_description: string
+  product_price: string
   is_available: boolean
   image_urls: string[]
-  search_description?: string
+  search_description: string
   product_categories: string[]
   product_features: string[]
   is_featured: boolean
   discount_price?: string;
   unique_visitors?: UniqueVisitor;
-
+  is_hostel_product: boolean;
 }
 
 export interface School {
@@ -74,5 +74,6 @@ export interface Hostel {
   id: string
   name: string
   school_id: string
-  school?: School
+  school: School
+  gender: 'male' | 'female' | 'mixed'
 }

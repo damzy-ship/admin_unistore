@@ -53,14 +53,14 @@ const Dashboard: React.FC = () => {
         tension: 0.4,
         fill: true
       }
-      ,{
-        label: 'Visitors',
-        data: growth.map(d => d.visitors || 0),
-        borderColor: 'rgb(16, 185, 129)',
-        backgroundColor: 'rgba(16, 185, 129, 0.05)',
-        tension: 0.4,
-        fill: true
-      }
+      // ,{
+      //   label: 'Visitors',
+      //   data: growth.map(d => d.visitors || 0),
+      //   borderColor: 'rgb(16, 185, 129)',
+      //   backgroundColor: 'rgba(16, 185, 129, 0.05)',
+      //   tension: 0.4,
+      //   fill: true
+      // }
     ]
   }
 
