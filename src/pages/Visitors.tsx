@@ -1,29 +1,28 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Plus, RefreshCw, Download, Filter, Eye } from 'lucide-react'
-import { useMerchants } from '../hooks/useSupabaseData'
+import { useVisitors } from '../hooks/useSupabaseData'
 import { UniqueVisitor, supabase, School } from '../lib/supabase'
 import LoadingSpinner from '../components/LoadingSpinner'
 import StatusBadge from '../components/StatusBadge'
 import VerificationModal from '../components/VerificationModal'
 import { formatDistanceToNow } from 'date-fns'
 
-const Merchants: React.FC = () => {
+const Visitors: React.FC = () => {
   const [filters, setFilters] = useState({
-    verification_status: 'All',
     date_from: '',
     date_to: '',
     school: 'All',
     query: ''
   })
+
   const [schools, setSchools] = useState<School[]>([])
   const [searchInput, setSearchInput] = useState('')
-  const [selectedMerchant, setSelectedMerchant] = useState<UniqueVisitor | null>(null)
+  const [selectedVisitor, setSelectedVisitor] = useState<UniqueVisitor | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [page, setPage] = useState(1)
   const limit = 10
-  const { merchants, merchantProducts, loading, error, total, refetch } = useMerchants(filters, page, limit)
+  const { visitors, loading, error, total, refetch } = useVisitors(filters, page, limit)
 
-  // fetch schools for the school filter (run before any early return)
   useEffect(() => {
     let mounted = true
     const loadSchools = async () => {
@@ -39,7 +38,6 @@ const Merchants: React.FC = () => {
     return () => { mounted = false }
   }, [])
 
-  // perform search only when user presses Enter or clicks the search button
   const performSearch = () => {
     setFilters(prev => ({ ...prev, query: searchInput }))
     setPage(1)
@@ -48,27 +46,21 @@ const Merchants: React.FC = () => {
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }))
     setPage(1)
-    // don't call refetch here — the hook will fetch when filters change
   }
 
-  const getProductCount = (merchantId: string) => {
-    return merchantProducts[merchantId]?.length || 0
-  }
-
-  const handleViewMerchant = (merchant: UniqueVisitor) => {
-    setSelectedMerchant(merchant)
+  const handleViewVisitor = (visitor: UniqueVisitor) => {
+    setSelectedVisitor(visitor)
     setIsModalOpen(true)
   }
 
   const handleModalClose = () => {
     setIsModalOpen(false)
-    setSelectedMerchant(null)
+    setSelectedVisitor(null)
   }
 
   const handleVerificationUpdate = (updated?: Partial<UniqueVisitor> | null) => {
-    // If parent passed back the updated user, update selectedMerchant so modal reflects new state
-    if (updated && selectedMerchant && (selectedMerchant as UniqueVisitor).id === updated.id) {
-      setSelectedMerchant(Object.assign({}, selectedMerchant, updated as UniqueVisitor))
+    if (updated && selectedVisitor && selectedVisitor.id === updated.id) {
+      setSelectedVisitor(Object.assign({}, selectedVisitor, updated as UniqueVisitor))
     }
     refetch()
   }
@@ -81,18 +73,18 @@ const Merchants: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 space-y-4 lg:space-y-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Merchants Management</h1>
-          <p className="text-gray-600">Manage all registered merchants on the platform</p>
+          <h1 className="text-2xl font-bold text-gray-800">Visitors Management</h1>
+          <p className="text-gray-600">Manage all visitor records on the platform</p>
         </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
-              placeholder="Search merchants..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') performSearch() }}
+              placeholder="Search visitors..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') performSearch() }}
               className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
             />
           </div>
@@ -106,19 +98,6 @@ const Merchants: React.FC = () => {
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <div className="flex flex-wrap items-end gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Verification Status</label>
-            <select 
-              value={filters.verification_status}
-              onChange={(e) => handleFilterChange('verification_status', e.target.value)}
-              className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option>All</option>
-              <option>verified</option>
-              <option>unverified</option>
-              <option>pending</option>
-            </select>
-          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">School</label>
             <select
@@ -135,18 +114,18 @@ const Merchants: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
             <div className="flex items-center space-x-2">
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={filters.date_from}
                 onChange={(e) => handleFilterChange('date_from', e.target.value)}
-                className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <span>to</span>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={filters.date_to}
                 onChange={(e) => handleFilterChange('date_to', e.target.value)}
-                className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -156,7 +135,7 @@ const Merchants: React.FC = () => {
                 <Filter size={16} className="mr-2" />
                 <span>Apply Filters</span>
               </button>
-              <button onClick={() => { setFilters({ verification_status: 'All', date_from: '', date_to: '', school: 'All', query: '' }); setSearchInput(''); setPage(1); }} className="flex items-center px-4 py-2 bg-white text-gray-700 border rounded-lg hover:bg-gray-50 transition-colors">
+              <button onClick={() => { setFilters({ date_from: '', date_to: '', school: 'All', query: '' }); setSearchInput(''); setPage(1); }} className="flex items-center px-4 py-2 bg-white text-gray-700 border rounded-lg hover:bg-gray-50 transition-colors">
                 Clear
               </button>
             </div>
@@ -164,10 +143,10 @@ const Merchants: React.FC = () => {
         </div>
       </div>
 
-      {/* Merchants Table */}
+      {/* Visitors Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-800">All Merchants</h2>
+          <h2 className="text-lg font-semibold text-gray-800">All Visitors</h2>
           <div className="flex items-center space-x-4">
             <button className="text-gray-500 hover:text-gray-700 transition-colors">
               <RefreshCw size={20} />
@@ -181,74 +160,68 @@ const Merchants: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Merchant</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visitor</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">University</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Products</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visits</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Active</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {merchants.map((merchant) => (
-                <tr key={merchant.id} className="hover:bg-gray-50 transition-colors">
+              {visitors.map((visitor) => (
+                <tr key={visitor.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-700">{(merchant.brand_name || merchant.full_name || 'U').split(' ').map((s: string) => s[0]).slice(0,2).join('')}</div>
+                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-700">{(visitor.full_name || 'V').split(' ').map((s: string) => s[0]).slice(0,2).join('')}</div>
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {merchant.brand_name || merchant.full_name || 'Unknown Merchant'}
+                          {visitor.full_name || 'Unknown Visitor'}
                         </div>
-                        <div className="text-sm text-gray-500">{merchant.user_id}</div>
+                        <div className="text-sm text-gray-500">{visitor.user_id}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{merchant.email || 'No email'}</div>
-                    <div className="text-sm text-gray-500">{merchant.phone_number || 'No phone'}</div>
+                    <div className="text-sm text-gray-900">{visitor.email || 'No email'}</div>
+                    <div className="text-sm text-gray-500">{visitor.phone_number || 'No phone'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm text-gray-900">
-                      {merchant.schools?.short_name || 'Unknown'}
+                      {visitor.schools?.short_name || 'Unknown'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900">{getProductCount(merchant.auth_user_id)}</span>
+                    <div className="text-sm font-medium text-gray-900">{visitor.visit_count ?? 0}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{merchant.visit_count ?? 0}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <StatusBadge status={merchant.verification_status} />
+                    <StatusBadge status={visitor.verification_status} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDistanceToNow(new Date(merchant.created_at), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(visitor.last_visit), { addSuffix: true })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button 
-                      onClick={() => handleViewMerchant(merchant)}
+                      onClick={() => handleViewVisitor(visitor)}
                       className="text-blue-600 hover:text-blue-900 mr-3 transition-colors"
                     >
                       <Eye size={16} className="inline mr-1" />
                       View
                     </button>
-                    <button className="text-gray-600 hover:text-gray-900 transition-colors">
-                      {merchant.verification_status === 'pending' ? 'Verify' : 'Edit'}
-                    </button>
+                    <button className="text-gray-600 hover:text-gray-900 transition-colors">Edit</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-          <div className="px-6 py-4 bg-gray-50 border-t flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="px-6 py-4 bg-gray-50 border-t flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-sm text-gray-500">
             Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, total || 0)}</span> of{' '}
-            <span className="font-medium">{total || 0}</span> merchants
+            <span className="font-medium">{total || 0}</span> visitors
           </div>
           <div className="flex items-center space-x-2 w-full sm:w-auto">
             <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="px-3 py-1 border rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50">
@@ -261,7 +234,6 @@ const Merchants: React.FC = () => {
                 </button>
               ))}
             </div>
-            {/* Mobile compact selector */}
             <div className="sm:hidden">
               <select value={page} onChange={(e) => setPage(Number(e.target.value))} className="border rounded-md px-3 py-1 text-sm">
                 {Array.from({ length: Math.max(1, Math.ceil((total || 0) / limit)) }).map((_, i) => (
@@ -277,7 +249,7 @@ const Merchants: React.FC = () => {
       </div>
 
       <VerificationModal
-        user={selectedMerchant}
+        user={selectedVisitor}
         isOpen={isModalOpen}
         onClose={handleModalClose}
         onVerificationUpdate={handleVerificationUpdate}
@@ -286,4 +258,4 @@ const Merchants: React.FC = () => {
   )
 }
 
-export default Merchants
+export default Visitors

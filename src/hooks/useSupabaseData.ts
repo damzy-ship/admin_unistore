@@ -37,6 +37,7 @@ export const useUsers = (
     school?: string
     date_from?: string
     date_to?: string
+    query?: string
   },
   page = 1,
   limit = 10
@@ -66,6 +67,21 @@ export const useUsers = (
 
       if (filters?.verification_status && filters.verification_status !== 'All') {
         query = query.eq('verification_status', filters.verification_status.toLowerCase())
+      }
+
+      // Filter by school id (server-side)
+      if (filters?.school && filters.school !== 'All') {
+        query = query.eq('school_id', filters.school)
+      }
+
+      // Server-side text search across common user fields
+      if (filters?.query && filters.query.trim() !== '') {
+        const q = filters.query.trim()
+        // use ilike for case-insensitive partial matching across multiple columns
+        // PostgREST .or() expects comma-separated conditions
+        query = query.or(
+          `full_name.ilike.%${q}%,email.ilike.%${q}%,user_id.ilike.%${q}%`
+        )
       }
 
       if (filters?.date_from) {
@@ -103,6 +119,8 @@ export const useMerchants = (
     verification_status?: string
     date_from?: string
     date_to?: string
+    query?: string
+    school?: string
   },
   page = 1,
   limit = 10
@@ -133,6 +151,19 @@ export const useMerchants = (
 
       if (filters?.verification_status && filters.verification_status !== 'All') {
         query = query.eq('verification_status', filters.verification_status.toLowerCase())
+      }
+
+      // Filter by school id (server-side)
+      if (filters?.school && filters.school !== 'All') {
+        query = query.eq('school_id', filters.school)
+      }
+
+      // Server-side text search across merchant fields
+      if (filters?.query && filters.query.trim() !== '') {
+        const q = filters.query.trim()
+        query = query.or(
+          `brand_name.ilike.%${q}%,full_name.ilike.%${q}%,email.ilike.%${q}%,user_id.ilike.%${q}%`
+        )
       }
 
       if (filters?.date_from) {
