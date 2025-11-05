@@ -219,6 +219,82 @@ export const useMerchants = (
   return { merchants, merchantProducts, loading, error, total, page, limit, refetch: fetchMerchants }
 }
 
+export const useVisitors = (
+  filters?: {
+    date_from?: string
+    date_to?: string
+    query?: string
+    school?: string
+  },
+  page = 1,
+  limit = 10
+) => {
+  const [visitors, setVisitors] = useState<UniqueVisitor[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [total, setTotal] = useState(0)
+
+  const fetchVisitors = async (p = page) => {
+    setLoading(true)
+    try {
+      let query = supabase
+        .from('unique_visitors')
+        .select(
+          `
+          *,
+          schools (
+            name,
+            short_name
+          )
+        `,
+          { count: 'exact' }
+        )
+        .eq('user_type', 'visitor')
+        .order('created_at', { ascending: false })
+
+      // Filter by school id (server-side)
+      if (filters?.school && filters.school !== 'All') {
+        query = query.eq('school_id', filters.school)
+      }
+
+      // Server-side text search across visitor fields
+      if (filters?.query && filters.query.trim() !== '') {
+        const q = filters.query.trim()
+        query = query.or(
+          `full_name.ilike.%${q}%,email.ilike.%${q}%,user_id.ilike.%${q}%`
+        )
+      }
+
+      if (filters?.date_from) {
+        query = query.gte('created_at', filters.date_from)
+      }
+
+      if (filters?.date_to) {
+        query = query.lte('created_at', filters.date_to)
+      }
+
+      const from = (p - 1) * limit
+      const to = p * limit - 1
+      const { data, error, count } = await query.range(from, to)
+
+      if (error) throw error
+      setVisitors(data || [])
+      setTotal(count || 0)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchVisitors(page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, page, limit])
+
+  return { visitors, loading, error, total, page, limit, refetch: fetchVisitors }
+}
+
 export const useProducts = (
   filters?: {
     merchant_id?: string
