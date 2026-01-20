@@ -1037,6 +1037,15 @@ export const updateUserType = async (userId: string, newType: 'user' | 'merchant
   if (error) throw error
 }
 
+export const updateUserSchool = async (userId: string, schoolId: string) => {
+  const { error } = await supabase
+    .from('unique_visitors')
+    .update({ school_id: schoolId })
+    .eq('id', userId)
+
+  if (error) throw error
+}
+
 // **NEW:** Function to fetch hostels for a specific school
 export const fetchHostelsBySchoolId = async (schoolId: string): Promise<Hostel[]> => {
   const { data, error } = await supabase

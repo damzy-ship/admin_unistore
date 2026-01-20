@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Plus, RefreshCw, Download, Filter, Eye } from 'lucide-react'
-import { useMerchants, updateUserType } from '../hooks/useSupabaseData'
+import { useMerchants, updateUserType, updateUserSchool } from '../hooks/useSupabaseData'
 import { UniqueVisitor, supabase, School } from '../lib/supabase'
 import LoadingSpinner from '../components/LoadingSpinner'
 import StatusBadge from '../components/StatusBadge'
@@ -83,6 +83,18 @@ const Merchants: React.FC = () => {
           console.error('Error updating user type:', error)
           alert('Failed to update user type')
         }
+      }
+    }
+  }
+
+  const handleSchoolChange = async (userId: string, schoolId: string) => {
+    if (window.confirm('Are you sure you want to change the university for this user?')) {
+      try {
+        await updateUserSchool(userId, schoolId)
+        refetch()
+      } catch (error) {
+        console.error('Error updating school:', error)
+        alert('Failed to update school')
       }
     }
   }
@@ -226,10 +238,18 @@ const Merchants: React.FC = () => {
                     <div className="text-sm text-gray-900">{merchant.email || 'No email'}</div>
                     <div className="text-sm text-gray-500">{merchant.phone_number || 'No phone'}</div>
                   </td>
+
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900">
-                      {merchant.schools?.short_name || 'Unknown'}
-                    </span>
+                    <select
+                      value={merchant.school_id || ''}
+                      onChange={(e) => handleSchoolChange(merchant.id, e.target.value)}
+                      className="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 max-w-[150px]"
+                    >
+                      <option value="">Unknown</option>
+                      {schools.map((s) => (
+                        <option key={s.id} value={s.id}>{s.short_name || s.name}</option>
+                      ))}
+                    </select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <select
